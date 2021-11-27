@@ -1,16 +1,14 @@
 package htwdd.sn.advertiser;
 
 import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseData;
-import android.bluetooth.le.AdvertisingSet;
-import android.bluetooth.le.AdvertisingSetCallback;
-import android.bluetooth.le.AdvertisingSetParameters;
+import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeAdvertiser;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.ParcelUuid;
 import android.util.Log;
-import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
@@ -27,22 +25,20 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         if( !BluetoothAdapter.getDefaultAdapter().isMultipleAdvertisementSupported() ) {
-            Log.e( "e", "Multiple advertisement not supported");
+            Log.e( "BLE", "Multiple advertisement not supported");
         }
 
         this.advertise();
-
-        while(true) {}
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
     private void advertise() {
         BluetoothLeAdvertiser advertiser = BluetoothAdapter.getDefaultAdapter().getBluetoothLeAdvertiser();
 
-        AdvertisingSetParameters parameters = (new AdvertisingSetParameters.Builder())
+        AdvertiseSettings settings = (new AdvertiseSettings.Builder())
                 .setConnectable(false)
-                .setInterval(AdvertisingSetParameters.INTERVAL_HIGH)
-                .setTxPowerLevel(AdvertisingSetParameters.TX_POWER_MEDIUM)
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
                 .build();
 
         ParcelUuid uuid = new ParcelUuid(UUID.fromString(getString(R.string.ble_uuid)));
@@ -53,29 +49,19 @@ public class MainActivity extends AppCompatActivity {
                 .addServiceData(uuid, "Moin".getBytes(StandardCharsets.UTF_8))
                 .build();
 
-        AdvertisingSetCallback callback = new AdvertisingSetCallback() {
+        AdvertiseCallback callback = new AdvertiseCallback() {
             @Override
-            public void onAdvertisingSetStarted(AdvertisingSet advertisingSet, int txPower, int status) {
-                Log.i("i", "onAdvertisingSetStarted(): txPower:" + txPower + " , status: "
-                        + status);
+            public void onStartSuccess(AdvertiseSettings settingsInEffect) {
+                super.onStartSuccess(settingsInEffect);
             }
 
             @Override
-            public void onAdvertisingDataSet(AdvertisingSet advertisingSet, int status) {
-                Log.i("i", "onAdvertisingDataSet() :status:" + status);
-            }
-
-            @Override
-            public void onScanResponseDataSet(AdvertisingSet advertisingSet, int status) {
-                Log.i("i", "onScanResponseDataSet(): status:" + status);
-            }
-
-            @Override
-            public void onAdvertisingSetStopped(AdvertisingSet advertisingSet) {
-                Log.i("i", "onAdvertisingSetStopped():");
+            public void onStartFailure(int errorCode) {
+                Log.e( "BLE", "Advertising onStartFailure: " + errorCode );
+                super.onStartFailure(errorCode);
             }
         };
 
-        advertiser.startAdvertisingSet(parameters, data, null, null, null, callback);
+        advertiser.startAdvertising(settings, data, callback);
     }
 }
